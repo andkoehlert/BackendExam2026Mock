@@ -1,5 +1,5 @@
 import cors from 'cors';
-import { setupDocs } from '../util/documentation';
+import { setupDocs } from './util/documentation';
 import express, {Application, Request, Response} from 'express'
 import routes from './routes';
 import { connect } from './repositroy/database'  

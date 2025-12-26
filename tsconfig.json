@@ -12,6 +12,7 @@
     "resolveJsonModule": true,
     "sourceMap": true,
     "outDir": "dist",
+    "rootDir": "./src",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": false,
     "strict": true,

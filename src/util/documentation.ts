@@ -28,7 +28,7 @@ export function setupDocs(app: Application) {
         ],
         components: {
             securitySchemes: {
-                BearerAuth: {  // Changed from ApiKeyAuth
+                BearerAuth: {  
                     type: 'http',
                     scheme: 'bearer',
                     bearerFormat: 'JWT',
