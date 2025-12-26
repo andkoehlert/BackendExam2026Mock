@@ -43,9 +43,10 @@ export async function startServer() {
     process.exit(1);  // Exit if database connection fails
   }
    
-  // start server
-  const PORT: number = parseInt(process.env.PORT as string) || 4000;
-  app.listen(PORT, function() {
-    console.log("Server is running on port: " + PORT);
-  })
+// start server
+const PORT = process.env.PORT || 4000; 
+app.listen(PORT, () => {
+  console.log("Server is running on port: " + PORT);
+});
+
 }
