@@ -13,6 +13,7 @@ const yearlySaldoSchema = new Schema(
 );
 
 const aarligeSaldoSchema = new Schema<AarligeSaldoResponse>({
+    userId: { type: String, required: true, index: true },
   data: { type: [yearlySaldoSchema], required: true }
 });
 

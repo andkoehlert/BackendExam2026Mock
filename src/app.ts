@@ -19,6 +19,7 @@ export async function startServer() {
     methods: ['GET', 'PUT', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
       'auth-token', 
+      'Authorization',
       'Origin', 
       'X-Requested-With', 
       'Content-Type', 

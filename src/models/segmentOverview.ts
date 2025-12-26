@@ -9,6 +9,7 @@ const segmentItemSchema = new Schema({
 }, { _id: false });
 
 const segmentOverviewSchema = new Schema<SegmentOverviewResponse>({
+     userId: { type: String, required: true, index: true },
   data: [{
     year: { type: Number, required: true },
     segments: { type: [segmentItemSchema], required: true }

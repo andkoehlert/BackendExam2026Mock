@@ -1,10 +1,12 @@
 import express, { Router, Request, Response } from 'express';
+import { verifyTokenMiddleware } from './middlewares/auth';
 
 import {
+getAllAarligeSaldo,
   createAarligeSaldo,
-  getAarligeSaldo,
-  updateAarligeSaldoById,
-  deleteAarligeSaldoById
+  getAarligeSaldoByUser,
+  updateAarligeSaldoByUser,
+  deleteAarligeSaldoByUser
 } from "./controller/aarligeSaldo";
 
 
@@ -18,10 +20,10 @@ import {
 
 import {
   createSegmentOverview,
+  getSegmentOverviewByUser,
   getAllSegmentOverview,
-  getSegmentOverviewById,
-  updateSegmentOverviewById,
-  deleteSegmentOverviewById
+  updateSegmentOverviewByUser,
+  deleteSegmentOverviewByUser
 } from './controller/segmentData';
 
 import {
@@ -45,19 +47,19 @@ import {
 import {
   createQuarterlyData,
   getAllQuarterlyData,
-  getQuarterlyDataByYear,
-  updateQuarterlyDataByYear,
-  deleteQuarterlyDataByYear
+  getQuarterlyDataByUser,
+  updateQuarterlyDataByUser,
+  deleteQuarterlyDataByUser
 } from './controller/queaterlyData';
 
 
 import {
   createMonthlyData,
+  getMonthlyDataByUser,
   getAllMonthlyData,
-  getMonthlyDataById,
-  updateMonthlyDataById,
-  deleteMonthlyDataById
-} from './controller/monthlyData'; 
+  updateMonthlyDataByUser,
+  deleteMonthlyDataByUser
+} from './controller/monthlyData';
 
     import { 
   createRevenueData, 
@@ -75,27 +77,81 @@ import { loginUser, registerUser, verifyToken } from './controller/authControlle
 const router: Router = Router();
 
 
+// Årlige Saldo Routes
+
 /**
  * @swagger
  * /aarlige-saldo:
  *   post:
  *     tags:
  *       - Årlige Saldo
- *     summary: Create yearly saldo data
- *     description: Create a yearly saldo overview containing afregnet, mål and completion percentage
+ *     summary: Create yearly saldo data for authenticated user
+ *     description: Create yearly saldo overview data for the logged-in user
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - year
+ *               - saldo
+ *             properties:
+ *               year:
+ *                 type: number
+ *                 example: 2024
+ *               saldo:
+ *                 type: number
+ *                 example: 325000
+ *           example:
+ *             year: 2024
+ *             saldo: 325000
  *     responses:
  *       201:
  *         description: Yearly saldo data created successfully
+ *       400:
+ *         description: Invalid request body
+ *       401:
+ *         description: Unauthorized
  *       500:
  *         description: Error creating yearly saldo data
  */
-router.post('/aarlige-saldo', createAarligeSaldo);
+router.post('/aarlige-saldo', verifyTokenMiddleware, createAarligeSaldo);
+
+/**
+ * @swagger
+ * /aarlige-saldo/me:
+ *   get:
+ *     tags:
+ *       - Årlige Saldo
+ *     summary: Get yearly saldo data for authenticated user
+ *     description: Retrieve yearly saldo overview data belonging to the logged-in user
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Yearly saldo data retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 userId:
+ *                   type: string
+ *                 year:
+ *                   type: number
+ *                 saldo:
+ *                   type: number
+ *       404:
+ *         description: No yearly saldo data found for this user
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Error fetching yearly saldo data
+ */
+router.get('/aarlige-saldo/me', verifyTokenMiddleware, getAarligeSaldoByUser);
 
 /**
  * @swagger
@@ -103,73 +159,82 @@ router.post('/aarlige-saldo', createAarligeSaldo);
  *   get:
  *     tags:
  *       - Årlige Saldo
- *     summary: Get yearly saldo data
- *     description: Retrieve yearly saldo overview
+ *     summary: Get all yearly saldo data (admin only)
+ *     description: Retrieve all yearly saldo entries
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       200:
- *         description: Successfully retrieved yearly saldo data
- *       404:
- *         description: No yearly saldo data found
+ *         description: Successfully retrieved all yearly saldo data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
  *       500:
  *         description: Error fetching yearly saldo data
  */
-router.get('/aarlige-saldo', getAarligeSaldo);
+router.get('/aarlige-saldo', verifyTokenMiddleware, getAllAarligeSaldo);
 
 /**
  * @swagger
- * /aarlige-saldo/{id}:
+ * /aarlige-saldo/me:
  *   put:
  *     tags:
  *       - Årlige Saldo
- *     summary: Update yearly saldo data by ID
- *     description: Update existing yearly saldo document
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: The document ID
+ *     summary: Update yearly saldo data for authenticated user
+ *     description: Update or create (upsert) yearly saldo data for the logged-in user
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             properties:
+ *               year:
+ *                 type: number
+ *                 example: 2024
+ *               saldo:
+ *                 type: number
+ *                 example: 410000
  *     responses:
  *       200:
  *         description: Yearly saldo data updated successfully
- *       404:
- *         description: Cannot update - yearly saldo data not found
+ *       401:
+ *         description: Unauthorized
  *       500:
  *         description: Error updating yearly saldo data
  */
-router.put('/aarlige-saldo/:id', updateAarligeSaldoById);
+router.put('/aarlige-saldo/me', verifyTokenMiddleware, updateAarligeSaldoByUser);
 
 /**
  * @swagger
- * /aarlige-saldo/{id}:
+ * /aarlige-saldo/me:
  *   delete:
  *     tags:
  *       - Årlige Saldo
- *     summary: Delete yearly saldo data by ID
- *     description: Delete yearly saldo document
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: The document ID
+ *     summary: Delete yearly saldo data for authenticated user
+ *     description: Delete yearly saldo overview data belonging to the logged-in user
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: Yearly saldo data deleted successfully
  *       404:
- *         description: Cannot delete - yearly saldo data not found
+ *         description: No yearly saldo data found to delete
+ *       401:
+ *         description: Unauthorized
  *       500:
  *         description: Error deleting yearly saldo data
  */
-router.delete('/aarlige-saldo/:id', deleteAarligeSaldoById);
+router.delete('/aarlige-saldo/me', verifyTokenMiddleware, deleteAarligeSaldoByUser);
 
 /**
  * @swagger
@@ -289,7 +354,122 @@ router.delete('/stoerste-perioder/:id', deleteLargestPeriodOverviewById);
  *       500:
  *         description: Error creating segment overview data
  */
-router.post('/segment-overblik', createSegmentOverview);
+/**
+ * @swagger
+ * /segment-overblik:
+ *   post:
+ *     tags:
+ *       - Segment Overview
+ *     summary: Create segment overview data for authenticated user
+ *     description: Create segment overview data for the logged-in user
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - data
+ *             properties:
+ *               data:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - year
+ *                     - segments
+ *                   properties:
+ *                     year:
+ *                       type: number
+ *                       example: 2024
+ *                     segments:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         required:
+ *                           - name
+ *                           - percentage
+ *                           - amount
+ *                         properties:
+ *                           name:
+ *                             type: string
+ *                             example: "Erhverv"
+ *                           percentage:
+ *                             type: number
+ *                             example: 45.5
+ *                           amount:
+ *                             type: number
+ *                             example: 1250000
+ *           example:
+ *             data:
+ *               - year: 2024
+ *                 segments:
+ *                   - name: "Erhverv"
+ *                     percentage: 45.5
+ *                     amount: 1250000
+ *                   - name: "Private"
+ *                     percentage: 32.3
+ *                     amount: 890000
+ *                   - name: "Offentlig"
+ *                     percentage: 22.2
+ *                     amount: 610000
+ *               - year: 2023
+ *                 segments:
+ *                   - name: "Erhverv"
+ *                     percentage: 42.1
+ *                     amount: 1100000
+ *                   - name: "Private"
+ *                     percentage: 35.8
+ *                     amount: 950000
+ *                   - name: "Offentlig"
+ *                     percentage: 22.1
+ *                     amount: 580000
+ *     responses:
+ *       201:
+ *         description: Segment overview data created successfully
+ *       400:
+ *         description: Invalid request body
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Error creating segment overview data
+ */
+router.post('/segment-overblik', verifyTokenMiddleware, createSegmentOverview);
+
+/**
+ * @swagger
+ * /segment-overblik/me:
+ *   get:
+ *     tags:
+ *       - Segment Overview
+ *     summary: Get segment overview data for authenticated user
+ *     description: Retrieve segment overview data belonging to the logged-in user
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Segment overview data retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 userId:
+ *                   type: string
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       404:
+ *         description: No segment overview data found for this user
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Error fetching segment overview data
+ */
+router.get('/segment-overblik/me', verifyTokenMiddleware, getSegmentOverviewByUser);
 
 /**
  * @swagger
@@ -297,95 +477,90 @@ router.post('/segment-overblik', createSegmentOverview);
  *   get:
  *     tags:
  *       - Segment Overview
- *     summary: Get all segment overview data
+ *     summary: Get all segment overview data (admin only)
  *     description: Retrieve all segment overview entries
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: Successfully retrieved all segment overview data
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
  *       500:
  *         description: Error fetching segment overview data
  */
-router.get('/segment-overblik', getAllSegmentOverview);
+router.get('/segment-overblik', verifyTokenMiddleware, getAllSegmentOverview);
 
 /**
  * @swagger
- * /segment-overblik/{id}:
- *   get:
- *     tags:
- *       - Segment Overview
- *     summary: Get segment overview data by ID
- *     description: Retrieve segment overview data by document ID
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: The document ID
- *     responses:
- *       200:
- *         description: Successfully retrieved segment overview data
- *       404:
- *         description: Segment overview data not found
- *       500:
- *         description: Error fetching segment overview data
- */
-router.get('/segment-overblik/:id', getSegmentOverviewById);
-
-/**
- * @swagger
- * /segment-overblik/{id}:
+ * /segment-overblik/me:
  *   put:
  *     tags:
  *       - Segment Overview
- *     summary: Update segment overview data by ID
- *     description: Update existing segment overview data
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
+ *     summary: Update segment overview data for authenticated user
+ *     description: Update or create (upsert) segment overview data for the logged-in user
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - data
+ *             properties:
+ *               data:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     year:
+ *                       type: number
+ *                     segments:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           name:
+ *                             type: string
+ *                           percentage:
+ *                             type: number
+ *                           amount:
+ *                             type: number
  *     responses:
  *       200:
  *         description: Segment overview data updated successfully
- *       404:
- *         description: Cannot update - segment overview data not found
+ *       401:
+ *         description: Unauthorized
  *       500:
  *         description: Error updating segment overview data
  */
-router.put('/segment-overblik/:id', updateSegmentOverviewById);
+router.put('/segment-overblik/me', verifyTokenMiddleware, updateSegmentOverviewByUser);
 
 /**
  * @swagger
- * /segment-overblik/{id}:
+ * /segment-overblik/me:
  *   delete:
  *     tags:
  *       - Segment Overview
- *     summary: Delete segment overview data by ID
- *     description: Delete segment overview data
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
+ *     summary: Delete segment overview data for authenticated user
+ *     description: Delete all segment overview data belonging to the logged-in user
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: Segment overview data deleted successfully
  *       404:
- *         description: Cannot delete - segment overview data not found
+ *         description: No segment overview data found to delete
+ *       401:
+ *         description: Unauthorized
  *       500:
  *         description: Error deleting segment overview data
  */
-router.delete('/segment-overblik/:id', deleteSegmentOverviewById);
-
+router.delete('/segment-overblik/me', verifyTokenMiddleware, deleteSegmentOverviewByUser);
 /**
  * @swagger
  * /summary-data:
@@ -556,115 +731,274 @@ router.get('/daily-data', getAllDailyData);
 router.get('/daily-data/:year', getDailyDataByYear);
 router.put('/daily-data/:year', updateDailyDataByYear);
 router.delete('/daily-data/:year', deleteDailyDataByYear);
+// Quarterly Data Routes
 
 /**
  * @swagger
- * /quarterly-data:
+ * /quarterly:
  *   post:
- *     summary: Create a new quarterly data entry
- *     tags: [QuarterlyData]
+ *     tags:
+ *       - Quarterly Data
+ *     summary: Create quarterly data for authenticated user
+ *     description: Create quarterly overview data for the logged-in user
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/QuarterlyData'
+ *             type: object
+ *             required:
+ *               - data
+ *             properties:
+ *               data:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - year
+ *                     - quarters
+ *                   properties:
+ *                     year:
+ *                       type: number
+ *                       example: 2024
+ *                     quarters:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         required:
+ *                           - quarter
+ *                           - amount
+ *                         properties:
+ *                           quarter:
+ *                             type: string
+ *                             example: "Q1"
+ *                           amount:
+ *                             type: number
+ *                             example: 250000
  *     responses:
  *       201:
  *         description: Quarterly data created successfully
+ *       400:
+ *         description: Invalid request body
+ *       401:
+ *         description: Unauthorized
  *       500:
- *         description: Server error
- * 
+ *         description: Error creating quarterly data
+ */
+router.post('/quarterly', verifyTokenMiddleware, createQuarterlyData);
+
+/**
+ * @swagger
+ * /quarterly/me:
  *   get:
- *     summary: Get all quarterly data
- *     tags: [QuarterlyData]
+ *     tags:
+ *       - Quarterly Data
+ *     summary: Get quarterly data for authenticated user
+ *     description: Retrieve quarterly data belonging to the logged-in user
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       200:
- *         description: List of quarterly data
- *       500:
- *         description: Server error
- * 
- * /quarterly-data/{year}:
- *   get:
- *     summary: Get quarterly data by year
- *     tags: [QuarterlyData]
- *     parameters:
- *       - in: path
- *         name: year
- *         schema:
- *           type: integer
- *         required: true
- *     responses:
- *       200:
- *         description: Quarterly data for the year
+ *         description: Quarterly data retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 userId:
+ *                   type: string
+ *                 data:
+ *                   type: array
  *       404:
- *         description: Not found
- * 
+ *         description: No quarterly data found for this user
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Error fetching quarterly data
+ */
+router.get('/quarterly/me', verifyTokenMiddleware, getQuarterlyDataByUser);
+
+/**
+ * @swagger
+ * /quarterly:
+ *   get:
+ *     tags:
+ *       - Quarterly Data
+ *     summary: Get all quarterly data (admin only)
+ *     description: Retrieve all quarterly data entries
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved all quarterly data
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       500:
+ *         description: Error fetching quarterly data
+ */
+router.get('/quarterly', verifyTokenMiddleware, getAllQuarterlyData);
+
+/**
+ * @swagger
+ * /quarterly/me:
  *   put:
- *     summary: Update quarterly data by year
- *     tags: [QuarterlyData]
- *     parameters:
- *       - in: path
- *         name: year
- *         schema:
- *           type: integer
- *         required: true
+ *     tags:
+ *       - Quarterly Data
+ *     summary: Update quarterly data for authenticated user
+ *     description: Update or create (upsert) quarterly data for the logged-in user
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/QuarterlyData'
+ *             type: object
+ *             properties:
+ *               data:
+ *                 type: array
  *     responses:
  *       200:
- *         description: Quarterly data updated
- *       404:
- *         description: Not found
- * 
- *   delete:
- *     summary: Delete quarterly data by year
- *     tags: [QuarterlyData]
- *     parameters:
- *       - in: path
- *         name: year
- *         schema:
- *           type: integer
- *         required: true
- *     responses:
- *       200:
- *         description: Quarterly data deleted
- *       404:
- *         description: Not found
+ *         description: Quarterly data updated successfully
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Error updating quarterly data
  */
+router.put('/quarterly/me', verifyTokenMiddleware, updateQuarterlyDataByUser);
 
-router.post('/quarterly-data', createQuarterlyData);
-router.get('/quarterly-data', getAllQuarterlyData);
-router.get('/quarterly-data/:year', getQuarterlyDataByYear);
-router.put('/quarterly-data/:year', updateQuarterlyDataByYear);
-router.delete('/quarterly-data/:year', deleteQuarterlyDataByYear);
+/**
+ * @swagger
+ * /quarterly/me:
+ *   delete:
+ *     tags:
+ *       - Quarterly Data
+ *     summary: Delete quarterly data for authenticated user
+ *     description: Delete quarterly data belonging to the logged-in user
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Quarterly data deleted successfully
+ *       404:
+ *         description: No quarterly data found to delete
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Error deleting quarterly data
+ */
+router.delete('/quarterly/me', verifyTokenMiddleware, deleteQuarterlyDataByUser);
 
-// Monthly Data Routes
+
+
 /**
  * @swagger
  * /monthly-data:
  *   post:
  *     tags:
  *       - Monthly Data
- *     summary: Create new monthly data
- *     description: Create a new monthly data entry containing all years and months
+ *     summary: Create monthly data for authenticated user
+ *     description: Create monthly data for the logged-in user. The userId is derived from the JWT token.
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - data
+ *             properties:
+ *               data:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - year
+ *                     - months
+ *                   properties:
+ *                     year:
+ *                       type: number
+ *                       example: 2024
+ *                     months:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         required:
+ *                           - month
+ *                           - monthNumber
+ *                           - afregnet
+ *                           - ditMaal
+ *                         properties:
+ *                           month:
+ *                             type: string
+ *                             example: January
+ *                           monthNumber:
+ *                             type: number
+ *                             example: 1
+ *                           afregnet:
+ *                             type: number
+ *                             example: 1200
+ *                           ditMaal:
+ *                             type: number
+ *                             example: 1500
  *     responses:
  *       201:
  *         description: Monthly data created successfully
+ *       400:
+ *         description: Invalid request body
+ *       401:
+ *         description: Unauthorized
  *       500:
  *         description: Error creating monthly data
  */
-router.post('/monthly-data', createMonthlyData);
+router.post('/monthly-data', verifyTokenMiddleware, createMonthlyData);
+
+/**
+ * @swagger
+ * /monthly-data/me:
+ *   get:
+ *     tags:
+ *       - Monthly Data
+ *     summary: Get monthly data for authenticated user
+ *     description: Retrieve monthly data belonging to the logged-in user.
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Monthly data retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 userId:
+ *                   type: string
+ *                   example: 64f1c8b1e3a9f4c123456789
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       year:
+ *                         type: number
+ *                       months:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *       404:
+ *         description: No monthly data found for this user
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Error fetching monthly data
+ */
+router.get('/monthly-data/me', verifyTokenMiddleware, getMonthlyDataByUser);
 
 /**
  * @swagger
@@ -672,95 +1006,98 @@ router.post('/monthly-data', createMonthlyData);
  *   get:
  *     tags:
  *       - Monthly Data
- *     summary: Get all monthly data
- *     description: Retrieve all monthly data entries
+ *     summary: Get all monthly data (admin only)
+ *     description: Retrieve all monthly data entries. Intended for admin users only.
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       200:
- *         description: Successfully retrieved all monthly data
+ *         description: All monthly data retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
  *       500:
  *         description: Error fetching monthly data
  */
-router.get('/monthly-data', getAllMonthlyData);
+router.get('/monthly-data', verifyTokenMiddleware, getAllMonthlyData);
 
 /**
  * @swagger
- * /monthly-data/{id}:
- *   get:
- *     tags:
- *       - Monthly Data
- *     summary: Get monthly data by ID
- *     description: Retrieve monthly data by document ID
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: The document ID
- *     responses:
- *       200:
- *         description: Successfully retrieved monthly data
- *       404:
- *         description: Monthly data not found
- *       500:
- *         description: Error fetching monthly data
- */
-router.get('/monthly-data/:id', getMonthlyDataById);
-
-/**
- * @swagger
- * /monthly-data/{id}:
+ * /monthly-data/me:
  *   put:
  *     tags:
  *       - Monthly Data
- *     summary: Update monthly data by ID
- *     description: Update existing monthly data
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
+ *     summary: Update monthly data for authenticated user
+ *     description: Update or create (upsert) monthly data for the logged-in user.
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - data
+ *             properties:
+ *               data:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     year:
+ *                       type: number
+ *                     months:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           month:
+ *                             type: string
+ *                           monthNumber:
+ *                             type: number
+ *                           afregnet:
+ *                             type: number
+ *                           ditMaal:
+ *                             type: number
  *     responses:
  *       200:
  *         description: Monthly data updated successfully
- *       404:
- *         description: Cannot update - monthly data not found
+ *       401:
+ *         description: Unauthorized
  *       500:
  *         description: Error updating monthly data
  */
-router.put('/monthly-data/:id', updateMonthlyDataById);
+router.put('/monthly-data/me', verifyTokenMiddleware, updateMonthlyDataByUser);
 
 /**
  * @swagger
- * /monthly-data/{id}:
+ * /monthly-data/me:
  *   delete:
  *     tags:
  *       - Monthly Data
- *     summary: Delete monthly data by ID
- *     description: Delete monthly data
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
+ *     summary: Delete monthly data for authenticated user
+ *     description: Delete all monthly data belonging to the logged-in user.
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: Monthly data deleted successfully
  *       404:
- *         description: Cannot delete - monthly data not found
+ *         description: No monthly data found to delete
+ *       401:
+ *         description: Unauthorized
  *       500:
  *         description: Error deleting monthly data
  */
-router.delete('/monthly-data/:id', deleteMonthlyDataById);
-
+router.delete('/monthly-data/me', verifyTokenMiddleware, deleteMonthlyDataByUser);
 /**
  * @swagger
  * /revenue-data:

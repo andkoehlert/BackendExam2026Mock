@@ -1,19 +1,20 @@
 import { Request, Response } from 'express';
 import { segmentOverviewModel } from '../models/segmentOverview';
-import { connect, disconnect } from '../repositroy/database';
+import { connect } from '../repositroy/database';
 
 /**
- * Create new segment overview data
- * @param req 
- * @param res 
+ * Create segment overview data for authenticated user
  */
 export async function createSegmentOverview(req: Request, res: Response): Promise<void> {
-  const data = req.body;
-
   try {
     await connect();
-
-    const segmentOverview = new segmentOverviewModel(data);
+    
+    const dataWithUserId = {
+      ...req.body,
+      userId: req.userId
+    };
+    
+    const segmentOverview = new segmentOverviewModel(dataWithUserId);
     const result = await segmentOverview.save();
 
     res.status(201).send(result);
@@ -23,71 +24,53 @@ export async function createSegmentOverview(req: Request, res: Response): Promis
 }
 
 /**
- * Get all segment overview data
- * @param req 
- * @param res 
+ * Get segment overview data for authenticated user
  */
-export async function getAllSegmentOverview(req: Request, res: Response): Promise<void> {
+export async function getSegmentOverviewByUser(req: Request, res: Response) {
   try {
     await connect();
 
-    const result = await segmentOverviewModel.find({});
+    const result = await segmentOverviewModel.findOne({ userId: req.userId });
     
-    // Return just the data structure without MongoDB wrapper
-    if (result.length > 0) {
-      res.status(200).send(result[0]); // Send the first document directly
-    } else {
-      res.status(404).send({ error: "No segment overview data found" });
+   if (!result) {
+      return res.status(404).send({ 
+        error: "No monthly data found for this user",
+        data: [] 
+      });
     }
+
+    res.status(200).send(result);
   } catch (err) {
     res.status(500).send("Error fetching segment overview data: " + err);
   } 
 }
 
 /**
- * Get segment overview data by ID
- * @param req 
- * @param res 
+ * Get all segment overview data (admin only)
  */
-export async function getSegmentOverviewById(req: Request, res: Response): Promise<void> {
+export async function getAllSegmentOverview(req: Request, res: Response): Promise<void> {
   try {
     await connect();
-    
-    const id = req.params.id;
-    const result = await segmentOverviewModel.findById(id);
 
-    if (!result) {
-      res.status(404).send('Segment overview data not found with id: ' + id);
-      return;
-    }
-
+    const result = await segmentOverviewModel.find({});
     res.status(200).send(result);
   } catch (err) {
     res.status(500).send("Error fetching segment overview data: " + err);
-  }
+  } 
 }
 
 /**
- * Update segment overview data by ID
- * @param req 
- * @param res 
+ * Update segment overview data for authenticated user
  */
-export async function updateSegmentOverviewById(req: Request, res: Response): Promise<void> {
-  const id = req.params.id;
-
+export async function updateSegmentOverviewByUser(req: Request, res: Response): Promise<void> {
   try {
     await connect();
 
-    const result = await segmentOverviewModel.findByIdAndUpdate(
-      id,
+    const result = await segmentOverviewModel.findOneAndUpdate(
+      { userId: req.userId },
       req.body,
-      { new: true }
+      { new: true, upsert: true }
     );
-
-    if (!result) {
-      res.status(404).send('Cannot update segment overview data with id: ' + id);
-      return;
-    }
 
     res.status(200).send(result);
   } catch (err) {
@@ -96,21 +79,16 @@ export async function updateSegmentOverviewById(req: Request, res: Response): Pr
 }
 
 /**
- * Delete segment overview data by ID
- * @param req 
- * @param res 
+ * Delete segment overview data for authenticated user
  */
-export async function deleteSegmentOverviewById(req: Request, res: Response): Promise<void> {
-  const id = req.params.id;
-
+export async function deleteSegmentOverviewByUser(req: Request, res: Response) {
   try {
     await connect();
 
-    const result = await segmentOverviewModel.findByIdAndDelete(id);
+    const result = await segmentOverviewModel.findOneAndDelete({ userId: req.userId });
 
     if (!result) {
-      res.status(404).send('Cannot delete segment overview data with id: ' + id);
-      return;
+      return res.status(404).send("No segment overview data found to delete");
     }
 
     res.status(200).send('Segment overview data deleted successfully.');

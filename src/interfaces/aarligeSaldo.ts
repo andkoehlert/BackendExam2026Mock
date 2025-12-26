@@ -7,5 +7,6 @@ export interface YearlySaldoItem {
 }
 
 export interface AarligeSaldoResponse {
+userId: { type: String, required: true, index: true },
   data: YearlySaldoItem[];
 }

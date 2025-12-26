@@ -10,6 +10,7 @@ const monthDataSchema = new Schema({
 }, { _id: false });
 
 const monthlyDataSchema = new Schema<MonthlyDataResponse>({
+  userId: { type: String, required: true, index: true },  
   data: [{
     year: { type: Number, required: true },
     months: { type: [monthDataSchema], required: true }

@@ -11,5 +11,6 @@ export interface YearSegmentData {
 }
 
 export interface SegmentOverviewResponse {
+     userId: string;
   data: YearSegmentData[];
 }

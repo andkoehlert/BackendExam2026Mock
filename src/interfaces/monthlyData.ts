@@ -12,5 +12,6 @@ export interface YearMonthlyData {
 }
 
 export interface MonthlyDataResponse {
+  userId: string;  
   data: YearMonthlyData[];
 }

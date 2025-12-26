@@ -3,16 +3,18 @@ import { aarligeSaldoModel } from "../models/aaligeSaldo";
 import { connect } from "../repositroy/database";
 
 /**
- * Create yearly saldo overview
+ * Create yearly saldo overview for authenticated user
  */
-export async function createAarligeSaldo(
-  req: Request,
-  res: Response
-): Promise<void> {
+export async function createAarligeSaldo(req: Request, res: Response): Promise<void> {
   try {
     await connect();
 
-    const saldo = new aarligeSaldoModel(req.body);
+    const dataWithUserId = {
+      ...req.body,
+      userId: req.userId
+    };
+
+    const saldo = new aarligeSaldoModel(dataWithUserId);
     const result = await saldo.save();
 
     res.status(201).send(result);
@@ -22,49 +24,53 @@ export async function createAarligeSaldo(
 }
 
 /**
- * Get yearly saldo overview
+ * Get yearly saldo overview for authenticated user
  */
-export async function getAarligeSaldo(
-  req: Request,
-  res: Response
-): Promise<void> {
+export async function getAarligeSaldoByUser(req: Request, res: Response) {
   try {
     await connect();
 
-    const result = await aarligeSaldoModel.find({});
+    const result = await aarligeSaldoModel.findOne({ userId: req.userId });
 
-    if (result.length > 0) {
-      res.status(200).send(result[0]);
-    } else {
-      res.status(404).send({ error: "No yearly saldo data found" });
+    if (!result) {
+      return res.status(404).send({
+        error: "No yearly saldo data found for this user",
+        data: []
+      });
     }
+
+    res.status(200).send(result);
   } catch (err) {
     res.status(500).send("Error fetching yearly saldo data: " + err);
   }
 }
 
 /**
- * Update yearly saldo by ID
+ * Get all yearly saldo data (admin only)
  */
-export async function updateAarligeSaldoById(
-  req: Request,
-  res: Response
-): Promise<void> {
-  const id = req.params.id;
-
+export async function getAllAarligeSaldo(req: Request, res: Response): Promise<void> {
   try {
     await connect();
 
-    const result = await aarligeSaldoModel.findByIdAndUpdate(
-      id,
-      req.body,
-      { new: true }
-    );
+    const result = await aarligeSaldoModel.find({});
+    res.status(200).send(result);
+  } catch (err) {
+    res.status(500).send("Error fetching yearly saldo data: " + err);
+  }
+}
 
-    if (!result) {
-      res.status(404).send("Cannot update yearly saldo with id: " + id);
-      return;
-    }
+/**
+ * Update yearly saldo overview for authenticated user
+ */
+export async function updateAarligeSaldoByUser(req: Request, res: Response): Promise<void> {
+  try {
+    await connect();
+
+    const result = await aarligeSaldoModel.findOneAndUpdate(
+      { userId: req.userId },
+      req.body,
+      { new: true, upsert: true }
+    );
 
     res.status(200).send(result);
   } catch (err) {
@@ -73,22 +79,16 @@ export async function updateAarligeSaldoById(
 }
 
 /**
- * Delete yearly saldo by ID
+ * Delete yearly saldo overview for authenticated user
  */
-export async function deleteAarligeSaldoById(
-  req: Request,
-  res: Response
-): Promise<void> {
-  const id = req.params.id;
-
+export async function deleteAarligeSaldoByUser(req: Request, res: Response) {
   try {
     await connect();
 
-    const result = await aarligeSaldoModel.findByIdAndDelete(id);
+    const result = await aarligeSaldoModel.findOneAndDelete({ userId: req.userId });
 
     if (!result) {
-      res.status(404).send("Cannot delete yearly saldo with id: " + id);
-      return;
+      return res.status(404).send("No yearly saldo data found to delete");
     }
 
     res.status(200).send("Yearly saldo data deleted successfully.");
