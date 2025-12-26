@@ -21,19 +21,23 @@ import {
 import {
   createSegmentOverview,
   getSegmentOverviewByUser,
+  getSegmentOverviewByYear,
+  getSegmentComparison,
   getAllSegmentOverview,
-  updateSegmentOverviewByUser,
-  deleteSegmentOverviewByUser
+  updateSegmentOverviewByYear,
+  deleteSegmentOverviewByYear
 } from './controller/segmentData';
 
 import {
   createSummaryData,
-  getAllSummaryData,
+  getSummaryDataByUser,
   getSummaryDataByYear,
+  getAllSummaryData,
+  updateSummaryDataByUser,
   updateSummaryDataByYear,
+  deleteSummaryDataByUser,
   deleteSummaryDataByYear
-} from "./controller/summaryData";
-
+} from './controller/summaryData';
 
 import {
   createDailyData,
@@ -61,12 +65,13 @@ import {
   deleteMonthlyDataByUser
 } from './controller/monthlyData';
 
-    import { 
-  createRevenueData, 
-  getAllRevenueData, 
+import {
+  createRevenueData,
+  getRevenueDataByUser,
   getRevenueDataByYear,
+  getAllRevenueData,
   updateRevenueDataByYear,
-  deleteRevenueDataByYear 
+  deleteRevenueDataByYear
 } from './controller/revenueData';
 
 
@@ -354,14 +359,15 @@ router.delete('/stoerste-perioder/:id', deleteLargestPeriodOverviewById);
  *       500:
  *         description: Error creating segment overview data
  */
+
 /**
  * @swagger
  * /segment-overblik:
  *   post:
  *     tags:
- *       - Segment Overview
- *     summary: Create segment overview data for authenticated user
- *     description: Create segment overview data for the logged-in user
+ *       - Segment Overview (Actuals)
+ *     summary: Create segment overview (actual) data for authenticated user
+ *     description: Create actual performance data for segments for a specific year
  *     security:
  *       - BearerAuth: []
  *     requestBody:
@@ -371,61 +377,74 @@ router.delete('/stoerste-perioder/:id', deleteLargestPeriodOverviewById);
  *           schema:
  *             type: object
  *             required:
- *               - data
+ *               - year
+ *               - categories
+ *               - segments
+ *               - totals
  *             properties:
- *               data:
+ *               year:
+ *                 type: number
+ *                 example: 2024
+ *               categories:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["Transaktioner", "Indgåelse af entreprisekontrakter", "Rådgivning", "Procesforing"]
+ *               segments:
  *                 type: array
  *                 items:
  *                   type: object
  *                   required:
- *                     - year
- *                     - segments
+ *                     - name
+ *                     - count
+ *                     - data
+ *                     - total
  *                   properties:
- *                     year:
+ *                     name:
+ *                       type: string
+ *                     count:
  *                       type: number
- *                       example: 2024
- *                     segments:
+ *                     data:
  *                       type: array
  *                       items:
- *                         type: object
- *                         required:
- *                           - name
- *                           - percentage
- *                           - amount
- *                         properties:
- *                           name:
- *                             type: string
- *                             example: "Erhverv"
- *                           percentage:
- *                             type: number
- *                             example: 45.5
- *                           amount:
- *                             type: number
- *                             example: 1250000
+ *                         type: number
+ *                     total:
+ *                       type: number
+ *               totals:
+ *                 type: object
+ *                 required:
+ *                   - count
+ *                   - data
+ *                   - grandTotal
+ *                 properties:
+ *                   count:
+ *                     type: number
+ *                   data:
+ *                     type: array
+ *                     items:
+ *                       type: number
+ *                   grandTotal:
+ *                     type: number
  *           example:
- *             data:
- *               - year: 2024
- *                 segments:
- *                   - name: "Erhverv"
- *                     percentage: 45.5
- *                     amount: 1250000
- *                   - name: "Private"
- *                     percentage: 32.3
- *                     amount: 890000
- *                   - name: "Offentlig"
- *                     percentage: 22.2
- *                     amount: 610000
- *               - year: 2023
- *                 segments:
- *                   - name: "Erhverv"
- *                     percentage: 42.1
- *                     amount: 1100000
- *                   - name: "Private"
- *                     percentage: 35.8
- *                     amount: 950000
- *                   - name: "Offentlig"
- *                     percentage: 22.1
- *                     amount: 580000
+ *             year: 2024
+ *             categories: ["Transaktioner", "Indgåelse af entreprisekontrakter", "Rådgivning", "Procesforing"]
+ *             segments:
+ *               - name: "Erhverv"
+ *                 count: 42
+ *                 data: [14, 9, 11, 8]
+ *                 total: 42
+ *               - name: "Private"
+ *                 count: 33
+ *                 data: [9, 8, 9, 7]
+ *                 total: 33
+ *               - name: "Offentlig"
+ *                 count: 38
+ *                 data: [9, 9, 10, 10]
+ *                 total: 38
+ *             totals:
+ *               count: 113
+ *               data: [32, 26, 30, 25]
+ *               grandTotal: 113
  *     responses:
  *       201:
  *         description: Segment overview data created successfully
@@ -443,25 +462,14 @@ router.post('/segment-overblik', verifyTokenMiddleware, createSegmentOverview);
  * /segment-overblik/me:
  *   get:
  *     tags:
- *       - Segment Overview
- *     summary: Get segment overview data for authenticated user
- *     description: Retrieve segment overview data belonging to the logged-in user
+ *       - Segment Overview (Actuals)
+ *     summary: Get all segment overview data for authenticated user
+ *     description: Retrieve all years of actual segment performance for the logged-in user
  *     security:
  *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: Segment overview data retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 userId:
- *                   type: string
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
  *       404:
  *         description: No segment overview data found for this user
  *       401:
@@ -473,12 +481,81 @@ router.get('/segment-overblik/me', verifyTokenMiddleware, getSegmentOverviewByUs
 
 /**
  * @swagger
+ * /segment-overblik/me/{year}:
+ *   get:
+ *     tags:
+ *       - Segment Overview (Actuals)
+ *     summary: Get segment overview by year for authenticated user
+ *     description: Retrieve actual segment performance for a specific year
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: year
+ *         required: true
+ *         schema:
+ *           type: number
+ *         example: 2024
+ *     responses:
+ *       200:
+ *         description: Segment overview data retrieved successfully
+ *       404:
+ *         description: Segment overview data not found for this year
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Error fetching segment overview data
+ */
+router.get('/segment-overblik/me/:year', verifyTokenMiddleware, getSegmentOverviewByYear);
+
+/**
+ * @swagger
+ * /segment-overblik/comparison/{year}:
+ *   get:
+ *     tags:
+ *       - Segment Overview (Actuals)
+ *     summary: Get goals vs actuals comparison for a year
+ *     description: Compare revenue goals with actual segment performance for a specific year
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: year
+ *         required: true
+ *         schema:
+ *           type: number
+ *         example: 2024
+ *     responses:
+ *       200:
+ *         description: Comparison data retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 year:
+ *                   type: number
+ *                 goals:
+ *                   type: object
+ *                 actuals:
+ *                   type: object
+ *       404:
+ *         description: No data found for this year
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Error fetching comparison data
+ */
+router.get('/segment-overblik/comparison/:year', verifyTokenMiddleware, getSegmentComparison);
+
+/**
+ * @swagger
  * /segment-overblik:
  *   get:
  *     tags:
- *       - Segment Overview
+ *       - Segment Overview (Actuals)
  *     summary: Get all segment overview data (admin only)
- *     description: Retrieve all segment overview entries
+ *     description: Retrieve all segment overview entries from all users
  *     security:
  *       - BearerAuth: []
  *     responses:
@@ -486,8 +563,6 @@ router.get('/segment-overblik/me', verifyTokenMiddleware, getSegmentOverviewByUs
  *         description: Successfully retrieved all segment overview data
  *       401:
  *         description: Unauthorized
- *       403:
- *         description: Forbidden
  *       500:
  *         description: Error fetching segment overview data
  */
@@ -495,12 +570,74 @@ router.get('/segment-overblik', verifyTokenMiddleware, getAllSegmentOverview);
 
 /**
  * @swagger
- * /segment-overblik/me:
+ * /segment-overblik/me/{year}:
  *   put:
  *     tags:
- *       - Segment Overview
- *     summary: Update segment overview data for authenticated user
- *     description: Update or create (upsert) segment overview data for the logged-in user
+ *       - Segment Overview (Actuals)
+ *     summary: Update segment overview by year
+ *     description: Update or create actual segment performance for a specific year
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: year
+ *         required: true
+ *         schema:
+ *           type: number
+ *         example: 2024
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       200:
+ *         description: Segment overview data updated successfully
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Error updating segment overview data
+ */
+router.put('/segment-overblik/me/:year', verifyTokenMiddleware, updateSegmentOverviewByYear);
+
+/**
+ * @swagger
+ * /segment-overblik/me/{year}:
+ *   delete:
+ *     tags:
+ *       - Segment Overview (Actuals)
+ *     summary: Delete segment overview by year
+ *     description: Delete actual segment performance for a specific year
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: year
+ *         required: true
+ *         schema:
+ *           type: number
+ *         example: 2024
+ *     responses:
+ *       200:
+ *         description: Segment overview data deleted successfully
+ *       404:
+ *         description: Cannot delete - data not found for this year
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Error deleting segment overview data
+ */
+router.delete('/segment-overblik/me/:year', verifyTokenMiddleware, deleteSegmentOverviewByYear);
+
+/**
+ * @swagger
+ * /summary-data:
+ *   post:
+ *     tags:
+ *       - Summary Data
+ *     summary: Create summary data for authenticated user
+ *     description: Create summary data entries for multiple years for the logged-in user
  *     security:
  *       - BearerAuth: []
  *     requestBody:
@@ -516,215 +653,267 @@ router.get('/segment-overblik', verifyTokenMiddleware, getAllSegmentOverview);
  *                 type: array
  *                 items:
  *                   type: object
+ *                   required:
+ *                     - year
+ *                     - afregnetArbejde
+ *                     - udstaendeTidsregistrering
+ *                     - totalPotienale
  *                   properties:
  *                     year:
  *                       type: number
- *                     segments:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           name:
- *                             type: string
- *                           percentage:
- *                             type: number
- *                           amount:
- *                             type: number
+ *                       example: 2024
+ *                     afregnetArbejde:
+ *                       type: number
+ *                       example: 2500000
+ *                     udstaendeTidsregistrering:
+ *                       type: number
+ *                       example: 150000
+ *                     totalPotienale:
+ *                       type: number
+ *                       example: 2650000
+ *           example:
+ *             data:
+ *               - year: 2024
+ *                 afregnetArbejde: 2500000
+ *                 udstaendeTidsregistrering: 150000
+ *                 totalPotienale: 2650000
+ *               - year: 2023
+ *                 afregnetArbejde: 2200000
+ *                 udstaendeTidsregistrering: 120000
+ *                 totalPotienale: 2320000
+ *               - year: 2022
+ *                 afregnetArbejde: 1950000
+ *                 udstaendeTidsregistrering: 100000
+ *                 totalPotienale: 2050000
  *     responses:
- *       200:
- *         description: Segment overview data updated successfully
+ *       201:
+ *         description: Summary data created successfully
+ *       400:
+ *         description: Invalid request body
  *       401:
  *         description: Unauthorized
  *       500:
- *         description: Error updating segment overview data
+ *         description: Error creating summary data
  */
-router.put('/segment-overblik/me', verifyTokenMiddleware, updateSegmentOverviewByUser);
+router.post('/summary-data', verifyTokenMiddleware, createSummaryData);
 
 /**
  * @swagger
- * /segment-overblik/me:
- *   delete:
+ * /summary-data/me:
+ *   get:
  *     tags:
- *       - Segment Overview
- *     summary: Delete segment overview data for authenticated user
- *     description: Delete all segment overview data belonging to the logged-in user
+ *       - Summary Data
+ *     summary: Get all summary data for authenticated user
+ *     description: Retrieve all summary data entries belonging to the logged-in user
  *     security:
  *       - BearerAuth: []
  *     responses:
  *       200:
- *         description: Segment overview data deleted successfully
+ *         description: Summary data retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 userId:
+ *                   type: string
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
  *       404:
- *         description: No segment overview data found to delete
+ *         description: No summary data found for this user
  *       401:
  *         description: Unauthorized
  *       500:
- *         description: Error deleting segment overview data
+ *         description: Error fetching summary data
  */
-router.delete('/segment-overblik/me', verifyTokenMiddleware, deleteSegmentOverviewByUser);
+router.get('/summary-data/me', verifyTokenMiddleware, getSummaryDataByUser);
+
+/**
+ * @swagger
+ * /summary-data/me/{year}:
+ *   get:
+ *     tags:
+ *       - Summary Data
+ *     summary: Get summary data by year for authenticated user
+ *     description: Retrieve summary data for a specific year for the logged-in user
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: year
+ *         required: true
+ *         schema:
+ *           type: number
+ *         description: The year to retrieve data for
+ *         example: 2024
+ *     responses:
+ *       200:
+ *         description: Summary data retrieved successfully
+ *       404:
+ *         description: Summary data not found for this year
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Error fetching summary data
+ */
+router.get('/summary-data/me/:year', verifyTokenMiddleware, getSummaryDataByYear);
+
 /**
  * @swagger
  * /summary-data:
- *   post:
- *     summary: Create a new summary data entry
- *     tags: [SummaryData]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/SummaryData'
- *     responses:
- *       201:
- *         description: Summary data created successfully
- *       500:
- *         description: Server error
- * 
  *   get:
- *     summary: Get all summary data
- *     tags: [SummaryData]
+ *     tags:
+ *       - Summary Data
+ *     summary: Get all summary data (admin only)
+ *     description: Retrieve all summary data entries from all users
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       200:
- *         description: List of summary data
+ *         description: Successfully retrieved all summary data
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
  *       500:
- *         description: Server error
- * 
- * /summary-data/{year}:
- *   get:
- *     summary: Get summary data by year
- *     tags: [SummaryData]
- *     parameters:
- *       - in: path
- *         name: year
- *         schema:
- *           type: integer
- *         required: true
- *     responses:
- *       200:
- *         description: Summary data for the year
- *       404:
- *         description: Not found
- * 
- *   put:
- *     summary: Update summary data by year
- *     tags: [SummaryData]
- *     parameters:
- *       - in: path
- *         name: year
- *         schema:
- *           type: integer
- *         required: true
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/SummaryData'
- *     responses:
- *       200:
- *         description: Summary data updated
- *       404:
- *         description: Not found
- * 
- *   delete:
- *     summary: Delete summary data by year
- *     tags: [SummaryData]
- *     parameters:
- *       - in: path
- *         name: year
- *         schema:
- *           type: integer
- *         required: true
- *     responses:
- *       200:
- *         description: Summary data deleted
- *       404:
- *         description: Not found
+ *         description: Error fetching summary data
  */
-
-router.post("/summary-data", createSummaryData);
-router.get("/summary-data", getAllSummaryData);
-router.get("/summary-data/:year", getSummaryDataByYear);
-router.put("/summary-data/:year", updateSummaryDataByYear);
-router.delete("/summary-data/:year", deleteSummaryDataByYear);
+router.get('/summary-data', verifyTokenMiddleware, getAllSummaryData);
 
 /**
  * @swagger
- * /daily-data:
- *   post:
- *     summary: Create daily data (bulk)
- *     tags: [DailyData]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/DailyDataCollection'
- *     responses:
- *       201:
- *         description: Daily data created
- *       500:
- *         description: Server error
- *   get:
- *     summary: Get all daily data
- *     tags: [DailyData]
- *     responses:
- *       200:
- *         description: List of daily data
- *       500:
- *         description: Server error
- *
- * /daily-data/{year}:
- *   get:
- *     summary: Get daily data by year
- *     tags: [DailyData]
- *     parameters:
- *       - in: path
- *         name: year
- *         schema:
- *           type: integer
- *         required: true
- *     responses:
- *       200:
- *         description: Daily data for the year
- *       404:
- *         description: Not found
- *
+ * /summary-data/me:
  *   put:
- *     summary: Update daily data by year
- *     tags: [DailyData]
- *     parameters:
- *       - in: path
- *         name: year
- *         schema:
- *           type: integer
- *         required: true
+ *     tags:
+ *       - Summary Data
+ *     summary: Update all summary data for authenticated user
+ *     description: Update or create (upsert) all summary data for the logged-in user
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/YearlyDailyData'
+ *             type: object
+ *             required:
+ *               - data
+ *             properties:
+ *               data:
+ *                 type: array
+ *                 items:
+ *                   type: object
  *     responses:
  *       200:
- *         description: Updated
- *       404:
- *         description: Not found
- *
- *   delete:
- *     summary: Delete daily data by year
- *     tags: [DailyData]
+ *         description: Summary data updated successfully
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Error updating summary data
+ */
+router.put('/summary-data/me', verifyTokenMiddleware, updateSummaryDataByUser);
+
+/**
+ * @swagger
+ * /summary-data/me/{year}:
+ *   put:
+ *     tags:
+ *       - Summary Data
+ *     summary: Update summary data by year for authenticated user
+ *     description: Update or create summary data for a specific year for the logged-in user
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: year
- *         schema:
- *           type: integer
  *         required: true
+ *         schema:
+ *           type: number
+ *         description: The year to update
+ *         example: 2024
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - afregnetArbejde
+ *               - udstaendeTidsregistrering
+ *               - totalPotienale
+ *             properties:
+ *               afregnetArbejde:
+ *                 type: number
+ *                 example: 2500000
+ *               udstaendeTidsregistrering:
+ *                 type: number
+ *                 example: 150000
+ *               totalPotienale:
+ *                 type: number
+ *                 example: 2650000
  *     responses:
  *       200:
- *         description: Deleted successfully
- *       404:
- *         description: Not found
+ *         description: Summary data updated successfully
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Error updating summary data
  */
+router.put('/summary-data/me/:year', verifyTokenMiddleware, updateSummaryDataByYear);
+
+/**
+ * @swagger
+ * /summary-data/me:
+ *   delete:
+ *     tags:
+ *       - Summary Data
+ *     summary: Delete all summary data for authenticated user
+ *     description: Delete all summary data belonging to the logged-in user
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Summary data deleted successfully
+ *       404:
+ *         description: No summary data found to delete
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Error deleting summary data
+ */
+router.delete('/summary-data/me', verifyTokenMiddleware, deleteSummaryDataByUser);
+
+/**
+ * @swagger
+ * /summary-data/me/{year}:
+ *   delete:
+ *     tags:
+ *       - Summary Data
+ *     summary: Delete summary data by year for authenticated user
+ *     description: Delete summary data for a specific year for the logged-in user
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: year
+ *         required: true
+ *         schema:
+ *           type: number
+ *         description: The year to delete
+ *         example: 2024
+ *     responses:
+ *       200:
+ *         description: Summary data for specified year deleted successfully
+ *       404:
+ *         description: Cannot delete - summary data not found for this year
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Error deleting summary data
+ */
+router.delete('/summary-data/me/:year', verifyTokenMiddleware, deleteSummaryDataByYear);
 
 router.post('/daily-data', createDailyData);
 router.get('/daily-data', getAllDailyData);
@@ -1098,14 +1287,17 @@ router.put('/monthly-data/me', verifyTokenMiddleware, updateMonthlyDataByUser);
  *         description: Error deleting monthly data
  */
 router.delete('/monthly-data/me', verifyTokenMiddleware, deleteMonthlyDataByUser);
+
 /**
  * @swagger
  * /revenue-data:
  *   post:
  *     tags:
- *       - Revenue Data
- *     summary: Create new revenue data
- *     description: Create a new revenue data entry for a specific year
+ *       - Revenue Data (Goals)
+ *     summary: Create revenue goals for authenticated user
+ *     description: Create target revenue data for a specific year for the logged-in user
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -1125,104 +1317,200 @@ router.delete('/monthly-data/me', verifyTokenMiddleware, deleteMonthlyDataByUser
  *                 type: array
  *                 items:
  *                   type: string
- *                 example: ["Transaktioner", "Indgåelse af entreprisekontrakter"]
+ *                 example: ["Transaktioner", "Indgåelse af entreprisekontrakter", "Rådgivning i forbindelse med planloven og anden regulering inkl. ekspropriation", "Mhjeret", "Erhvervsleje", "Rådgivning af off. Myndigheder i forbindelse med salg/byudvikling", "Rådgivning almene boliger", "Andet affært af KLA specialer (M&A, insolvens)", "Insolvensrådgivning"]
  *               segments:
  *                 type: array
  *                 items:
  *                   type: object
+ *                   required:
+ *                     - name
+ *                     - count
+ *                     - data
+ *                     - total
  *                   properties:
  *                     name:
  *                       type: string
+ *                       example: "Private ejendomsudviklere"
  *                     count:
  *                       type: number
+ *                       description: Target number of cases/projects
+ *                       example: 25
  *                     data:
  *                       type: array
  *                       items:
  *                         type: number
+ *                       description: Target revenue per category in DKK
+ *                       example: [600000, 150000, 50000, 75000, 0, 0, 0, 0, 0]
  *                     total:
  *                       type: number
+ *                       description: Total target revenue for this segment in DKK
+ *                       example: 875000
  *               totals:
  *                 type: object
+ *                 required:
+ *                   - count
+ *                   - data
+ *                   - grandTotal
  *                 properties:
  *                   count:
  *                     type: number
+ *                     description: Total target number of cases
+ *                     example: 73
  *                   data:
  *                     type: array
  *                     items:
  *                       type: number
+ *                     description: Total target revenue per category in DKK
+ *                     example: [1750000, 425000, 100000, 75000, 125000, 75000, 100000, 100000, 0]
  *                   grandTotal:
  *                     type: number
+ *                     description: Total target revenue across all segments in DKK
+ *                     example: 2750000
+ *           example:
+ *             year: 2024
+ *             categories: ["Transaktioner", "Indgåelse af entreprisekontrakter", "Rådgivning i forbindelse med planloven og anden regulering inkl. ekspropriation", "Mhjeret", "Erhvervsleje", "Rådgivning af off. Myndigheder i forbindelse med salg/byudvikling", "Rådgivning almene boliger", "Andet affært af KLA specialer (M&A, insolvens)", "Insolvensrådgivning"]
+ *             segments:
+ *               - name: "Almene boligselskaber"
+ *                 count: 5
+ *                 data: [0, 0, 0, 0, 0, 0, 100000, 0, 0]
+ *                 total: 100000
+ *               - name: "Offentlige myndigheder"
+ *                 count: 3
+ *                 data: [0, 0, 0, 0, 0, 75000, 0, 0, 0]
+ *                 total: 75000
+ *               - name: "Private ejendomsudviklere"
+ *                 count: 25
+ *                 data: [600000, 150000, 50000, 75000, 0, 0, 0, 0, 0]
+ *                 total: 875000
+ *               - name: "Private ejendomsinvestorer"
+ *                 count: 25
+ *                 data: [600000, 150000, 50000, 0, 75000, 0, 0, 0, 0]
+ *                 total: 875000
+ *               - name: "Kapitalfonde"
+ *                 count: 5
+ *                 data: [200000, 50000, 0, 0, 0, 0, 0, 100000, 0]
+ *                 total: 350000
+ *               - name: "Pensionskasser"
+ *                 count: 5
+ *                 data: [200000, 50000, 0, 0, 25000, 0, 0, 0, 0]
+ *                 total: 275000
+ *               - name: "Asset managers"
+ *                 count: 5
+ *                 data: [150000, 25000, 0, 0, 25000, 0, 0, 0, 0]
+ *                 total: 200000
+ *             totals:
+ *               count: 73
+ *               data: [1750000, 425000, 100000, 75000, 125000, 75000, 100000, 100000, 0]
+ *               grandTotal: 2750000
  *     responses:
  *       201:
  *         description: Revenue data created successfully
+ *       400:
+ *         description: Invalid request body
+ *       401:
+ *         description: Unauthorized
  *       500:
  *         description: Error creating revenue data
  */
-router.post('/revenue-data', createRevenueData);
+router.post('/revenue-data', verifyTokenMiddleware, createRevenueData);
 
 /**
  * @swagger
- * /revenue-data:
+ * /revenue-data/me:
  *   get:
  *     tags:
- *       - Revenue Data
- *     summary: Get all revenue data
- *     description: Retrieve all revenue data entries, sorted by year (descending)
+ *       - Revenue Data (Goals)
+ *     summary: Get all revenue goals for authenticated user
+ *     description: Retrieve all revenue goal entries belonging to the logged-in user
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       200:
- *         description: Successfully retrieved all revenue data
+ *         description: Revenue data retrieved successfully
  *         content:
  *           application/json:
  *             schema:
  *               type: array
  *               items:
  *                 type: object
+ *       404:
+ *         description: No revenue data found for this user
+ *       401:
+ *         description: Unauthorized
  *       500:
  *         description: Error fetching revenue data
  */
-router.get('/revenue-data', getAllRevenueData);
+router.get('/revenue-data/me', verifyTokenMiddleware, getRevenueDataByUser);
 
 /**
  * @swagger
- * /revenue-data/{year}:
+ * /revenue-data/me/{year}:
  *   get:
  *     tags:
- *       - Revenue Data
- *     summary: Get revenue data by year
- *     description: Retrieve revenue data for a specific year
+ *       - Revenue Data (Goals)
+ *     summary: Get revenue goals by year for authenticated user
+ *     description: Retrieve revenue goals for a specific year for the logged-in user
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: year
  *         required: true
  *         schema:
- *           type: integer
+ *           type: number
  *         description: The year to retrieve data for
  *         example: 2024
  *     responses:
  *       200:
- *         description: Successfully retrieved revenue data
+ *         description: Revenue data retrieved successfully
  *       404:
- *         description: Revenue data not found for the specified year
+ *         description: Revenue data not found for this year
+ *       401:
+ *         description: Unauthorized
  *       500:
  *         description: Error fetching revenue data
  */
-router.get('/revenue-data/:year', getRevenueDataByYear);
+router.get('/revenue-data/me/:year', verifyTokenMiddleware, getRevenueDataByYear);
 
 /**
  * @swagger
- * /revenue-data/{year}:
+ * /revenue-data:
+ *   get:
+ *     tags:
+ *       - Revenue Data (Goals)
+ *     summary: Get all revenue data (admin only)
+ *     description: Retrieve all revenue data entries from all users
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved all revenue data
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       500:
+ *         description: Error fetching revenue data
+ */
+router.get('/revenue-data', verifyTokenMiddleware, getAllRevenueData);
+
+/**
+ * @swagger
+ * /revenue-data/me/{year}:
  *   put:
  *     tags:
- *       - Revenue Data
- *     summary: Update revenue data by year
- *     description: Update existing revenue data for a specific year
+ *       - Revenue Data (Goals)
+ *     summary: Update revenue goals by year for authenticated user
+ *     description: Update or create (upsert) revenue goals for a specific year for the logged-in user
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: year
  *         required: true
  *         schema:
- *           type: integer
- *         description: The year to update data for
+ *           type: number
+ *         description: The year to update
  *         example: 2024
  *     requestBody:
  *       required: true
@@ -1231,8 +1519,6 @@ router.get('/revenue-data/:year', getRevenueDataByYear);
  *           schema:
  *             type: object
  *             properties:
- *               year:
- *                 type: number
  *               categories:
  *                 type: array
  *                 items:
@@ -1246,51 +1532,42 @@ router.get('/revenue-data/:year', getRevenueDataByYear);
  *     responses:
  *       200:
  *         description: Revenue data updated successfully
- *       404:
- *         description: Cannot update - revenue data not found
+ *       401:
+ *         description: Unauthorized
  *       500:
  *         description: Error updating revenue data
  */
-router.put('/revenue-data/:year', updateRevenueDataByYear);
+router.put('/revenue-data/me/:year', verifyTokenMiddleware, updateRevenueDataByYear);
 
 /**
  * @swagger
- * /revenue-data/{year}:
+ * /revenue-data/me/{year}:
  *   delete:
  *     tags:
- *       - Revenue Data
- *     summary: Delete revenue data by year
- *     description: Delete revenue data for a specific year
+ *       - Revenue Data (Goals)
+ *     summary: Delete revenue goals by year for authenticated user
+ *     description: Delete revenue goals for a specific year for the logged-in user
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: year
  *         required: true
  *         schema:
- *           type: integer
- *         description: The year to delete data for
+ *           type: number
+ *         description: The year to delete
  *         example: 2024
  *     responses:
  *       200:
  *         description: Revenue data deleted successfully
  *       404:
- *         description: Cannot delete - revenue data not found
+ *         description: Cannot delete - revenue data not found for this year
+ *       401:
+ *         description: Unauthorized
  *       500:
  *         description: Error deleting revenue data
  */
-router.delete('/revenue-data/:year', deleteRevenueDataByYear);
-
-/**
- * @swagger
- * /:
- *   get:
- *     tags:
- *       - App Routes
- *     summary: Health check
- *     description: Basic route to check if the api is running
- *     responses:
- *       200:
- *         description: Server up and running.
- */
+router.delete('/revenue-data/me/:year', verifyTokenMiddleware, deleteRevenueDataByYear);
 
 // get, post, put, delete
 

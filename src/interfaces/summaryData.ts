@@ -6,5 +6,6 @@ export interface summaryDataEntry {
 }
 
 export interface SummaryData {
+  userId: string;
   data: summaryDataEntry[];
 }

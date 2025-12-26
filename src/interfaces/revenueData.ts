@@ -13,6 +13,7 @@ export interface Totals {
 }
 
 export interface RevenueData {
+    userId: string;
   year: number;
   categories: string[];
   segments: Segment[];

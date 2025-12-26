@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import { segmentOverviewModel } from '../models/segmentOverview';
+import { revenueDataModel } from '../models/revenueData';
 import { connect } from '../repositroy/database';
 
 /**
- * Create segment overview data for authenticated user
+ * Create segment overview (actual) data for authenticated user
  */
 export async function createSegmentOverview(req: Request, res: Response): Promise<void> {
   try {
@@ -24,17 +25,17 @@ export async function createSegmentOverview(req: Request, res: Response): Promis
 }
 
 /**
- * Get segment overview data for authenticated user
+ * Get all segment overview data for authenticated user
  */
 export async function getSegmentOverviewByUser(req: Request, res: Response) {
   try {
     await connect();
 
-    const result = await segmentOverviewModel.findOne({ userId: req.userId });
+    const result = await segmentOverviewModel.find({ userId: req.userId }).sort({ year: -1 });
     
-   if (!result) {
+    if (!result || result.length === 0) {
       return res.status(404).send({ 
-        error: "No monthly data found for this user",
+        error: "No segment overview data found for this user",
         data: [] 
       });
     }
@@ -46,13 +47,66 @@ export async function getSegmentOverviewByUser(req: Request, res: Response) {
 }
 
 /**
+ * Get segment overview by year for authenticated user
+ */
+export async function getSegmentOverviewByYear(req: Request, res: Response) {
+  try {
+    await connect();
+    
+    const year = parseInt(req.params.year);
+    const result = await segmentOverviewModel.findOne({ 
+      userId: req.userId, 
+      year 
+    });
+
+    if (!result) {
+      return res.status(404).send("Segment overview data not found for year: " + year);
+    }
+
+    res.status(200).send(result);
+  } catch (err) {
+    res.status(500).send("Error fetching segment overview data: " + err);
+  }
+}
+
+/**
+ * Get comparison of goals vs actuals for a specific year
+ * This combines revenueData (goals) with segmentOverview (actuals)
+ */
+export async function getSegmentComparison(req: Request, res: Response) {
+  try {
+    await connect();
+    
+    const year = parseInt(req.params.year);
+    
+    // Fetch both goals and actuals
+    const [goals, actuals] = await Promise.all([
+      revenueDataModel.findOne({ userId: req.userId, year }),
+      segmentOverviewModel.findOne({ userId: req.userId, year })
+    ]);
+
+    if (!goals && !actuals) {
+      return res.status(404).send("No data found for year: " + year);
+    }
+
+    res.status(200).send({
+      year,
+      goals: goals || null,
+      actuals: actuals || null
+    });
+  } catch (err) {
+    res.status(500).send("Error fetching comparison data: " + err);
+  }
+}
+
+/**
  * Get all segment overview data (admin only)
  */
 export async function getAllSegmentOverview(req: Request, res: Response): Promise<void> {
   try {
     await connect();
 
-    const result = await segmentOverviewModel.find({});
+    const result = await segmentOverviewModel.find({}).sort({ year: -1 });
     res.status(200).send(result);
   } catch (err) {
     res.status(500).send("Error fetching segment overview data: " + err);
@@ -60,14 +114,15 @@ export async function getAllSegmentOverview(req: Request, res: Response): Promis
 }
 
 /**
- * Update segment overview data for authenticated user
+ * Update segment overview by year for authenticated user
  */
-export async function updateSegmentOverviewByUser(req: Request, res: Response): Promise<void> {
+export async function updateSegmentOverviewByYear(req: Request, res: Response): Promise<void> {
   try {
     await connect();
 
+    const year = parseInt(req.params.year);
     const result = await segmentOverviewModel.findOneAndUpdate(
-      { userId: req.userId },
+      { userId: req.userId, year },
       req.body,
       { new: true, upsert: true }
     );
@@ -79,19 +134,23 @@ export async function updateSegmentOverviewByUser(req: Request, res: Response): 
 }
 
 /**
- * Delete segment overview data for authenticated user
+ * Delete segment overview by year for authenticated user
  */
-export async function deleteSegmentOverviewByUser(req: Request, res: Response) {
+export async function deleteSegmentOverviewByYear(req: Request, res: Response) {
   try {
     await connect();
 
-    const result = await segmentOverviewModel.findOneAndDelete({ userId: req.userId });
+    const year = parseInt(req.params.year);
+    const result = await segmentOverviewModel.findOneAndDelete({ 
+      userId: req.userId, 
+      year 
+    });
 
     if (!result) {
-      return res.status(404).send("No segment overview data found to delete");
+      return res.status(404).send("Cannot delete segment overview data for year: " + year);
     }
 
-    res.status(200).send('Segment overview data deleted successfully.');
+    res.status(200).send("Segment overview data deleted successfully.");
   } catch (err) {
     res.status(500).send("Error deleting segment overview data: " + err);
   }

@@ -1,16 +1,20 @@
-// interfaces/segmentOverview.ts
-export interface SegmentItem {
+export interface SegmentActual {
   name: string;
-  percentage: number;
-  amount: number;
+  count: number;        
+  data: number[];       
+  total: number;        
 }
 
-export interface YearSegmentData {
-  year: number;
-  segments: SegmentItem[];
+export interface ActualTotals {
+  count: number;        
+  data: number[];       
+  grandTotal: number;   
 }
 
 export interface SegmentOverviewResponse {
-     userId: string;
-  data: YearSegmentData[];
+  userId: string;
+  year: number;         
+  categories: string[]; 
+  segments: SegmentActual[];
+  totals: ActualTotals;
 }
