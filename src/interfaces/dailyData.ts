@@ -27,6 +27,7 @@ export interface Summary {
 }
 
 export interface YearlyDailyData {
+        userId: string;
   year: number;
   dailyData: DailyData[];
   summary: Summary;
