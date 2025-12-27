@@ -31,7 +31,7 @@ const summarySchema = new Schema({
 
 const yearlyDailyDataSchema = new Schema<YearlyDailyData>({
 userId: { type: String, required: true },
-  year: { type: Number, required: true, unique: true },
+  year: { type: Number, required: true },
   dailyData: { type: [dailyDataSchema], required: true },
   summary: { type: summarySchema, required: true }
 });

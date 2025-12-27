@@ -17,7 +17,7 @@ const totalsSchema = new Schema({
 
 const revenueDataSchema = new Schema<RevenueData>({
     userId: { type: String, required: true, index: true },
-  year: { type: Number, required: true, unique: true },
+  year: { type: Number, required: true },
   categories: { type: [String], required: true },
   segments: { type: [segmentSchema], required: true },
   totals: { type: totalsSchema, required: true }
