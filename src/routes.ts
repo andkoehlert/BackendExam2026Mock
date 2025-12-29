@@ -39,12 +39,13 @@ import {
   deleteSummaryDataByYear
 } from './controller/summaryData';
 
-import {
-  createDailyData,
-  getAllDailyData,
-  getDailyDataByYear,
-  updateDailyDataByYear,
-  deleteDailyDataByYear
+import { 
+  createDailyData, 
+  getDailyDataByUser,
+  getAllDailyData, 
+  getDailyDataByYear, 
+  updateDailyDataByYear, 
+  deleteDailyDataByYear 
 } from './controller/dailyData';
 
 
@@ -884,15 +885,215 @@ router.put('/summary-data/me/:year', verifyTokenMiddleware, updateSummaryDataByY
  *         description: Error deleting summary data
  */
 router.delete('/summary-data/me', verifyTokenMiddleware, deleteSummaryDataByUser);
+/**
+ * @swagger
+ * /daily-data:
+ *   post:
+ *     tags:
+ *       - Daily Data
+ *     summary: Create daily data for authenticated user
+ *     description: Create daily data for the logged-in user. The userId is derived from the JWT token.
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - years
+ *             properties:
+ *               years:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - year
+ *                     - dailyData
+ *                     - summary
+ *                   properties:
+ *                     year:
+ *                       type: number
+ *                       example: 2024
+ *
+ *                     dailyData:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         required:
+ *                           - date
+ *                         properties:
+ *                           date:
+ *                             type: string
+ *                             format: date
+ *                             example: "2024-01-08"
+ *                           settledAmount:
+ *                             type: number
+ *                             example: 45000
+ *                           caseValue:
+ *                             type: number
+ *                             example: 120000
+ *                           casesSettled:
+ *                             type: number
+ *                             example: 2
+ *                           status:
+ *                             type: string
+ *                             example: "aktiv"
+ *                           workType:
+ *                             type: string
+ *                             example: "klientmøder"
+ *                           industry:
+ *                             type: string
+ *                             example: "offentlige-myndigheder"
+ *                           caseIds:
+ *                             type: array
+ *                             items:
+ *                               type: string
+ *                               example: "CASE-2024-001"
+ *                           details:
+ *                             type: object
+ *                             properties:
+ *                               meetings:
+ *                                 type: number
+ *                                 example: 2
+ *                               hoursLogged:
+ *                                 type: number
+ *                                 example: 5.5
+ *                               clientName:
+ *                                 type: string
+ *                                 example: "Kommune København"
+ *
+ *                     summary:
+ *                       type: object
+ *                       properties:
+ *                         totalSettled:
+ *                           type: number
+ *                           example: 7825000
+ *                         totalCaseValue:
+ *                           type: number
+ *                           example: 13565000
+ *                         totalCases:
+ *                           type: number
+ *                           example: 65
+ *                         averagePerDay:
+ *                           type: number
+ *                           example: 233582
+ *                         activeByStatus:
+ *                           type: object
+ *                           additionalProperties:
+ *                             type: number
+ *                           example:
+ *                             aktiv: 18
+ *                             under-behandling: 15
+ *                             venter-modpart: 8
+ *                             venter-klient: 12
+ *                             afsluttes-snart: 12
+ *                         byWorkType:
+ *                           type: object
+ *                           additionalProperties:
+ *                             type: number
+ *                           example:
+ *                             klientmøder: 420
+ *                             retsmøder: 380
+ *                             interne-møder: 180
+ *                             forberedelsesmøder: 245
+ *                         byIndustry:
+ *                           type: object
+ *                           additionalProperties:
+ *                             type: number
+ *                           example:
+ *                             offentlige-myndigheder: 1450000
+ *                             private-ejendomsudviklere: 2100000
+ *                             almene-boligsaelskaber: 850000
+ *                             pensionskasser: 1200000
+ *                             private-ejendomsinvestorer: 1500000
+ *                             kapital-fonde: 425000
+ *                             asset-managers: 300000
+ *
+ *                     __v:
+ *                       type: number
+ *                       example: 0
+ *
+ *     responses:
+ *       201:
+ *         description: Daily data created successfully
+ *       400:
+ *         description: Invalid request body
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Error creating daily data
+ */
+router.post('/daily-data', verifyTokenMiddleware, createDailyData);
 
 /**
  * @swagger
- * /summary-data/me/{year}:
- *   delete:
+ * /daily-data/me:
+ *   get:
  *     tags:
- *       - Summary Data
- *     summary: Delete summary data by year for authenticated user
- *     description: Delete summary data for a specific year for the logged-in user
+ *       - Daily Data
+ *     summary: Get daily data for authenticated user
+ *     description: Retrieve all daily data belonging to the logged-in user.
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Daily data retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 years:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       404:
+ *         description: No daily data found for this user
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Error fetching daily data
+ */
+router.get('/daily-data/me', verifyTokenMiddleware, getDailyDataByUser);
+
+/**
+ * @swagger
+ * /daily-data:
+ *   get:
+ *     tags:
+ *       - Daily Data
+ *     summary: Get all daily data (admin only)
+ *     description: Retrieve all daily data entries. Intended for admin users only.
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All daily data retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       500:
+ *         description: Error fetching daily data
+ */
+router.get('/daily-data', verifyTokenMiddleware, getAllDailyData);
+
+/**
+ * @swagger
+ * /daily-data/{year}:
+ *   get:
+ *     tags:
+ *       - Daily Data
+ *     summary: Get daily data by year for authenticated user
+ *     description: Retrieve daily data for a specific year belonging to the logged-in user.
  *     security:
  *       - BearerAuth: []
  *     parameters:
@@ -900,26 +1101,91 @@ router.delete('/summary-data/me', verifyTokenMiddleware, deleteSummaryDataByUser
  *         name: year
  *         required: true
  *         schema:
- *           type: number
+ *           type: integer
+ *         description: The year to retrieve data for
+ *         example: 2024
+ *     responses:
+ *       200:
+ *         description: Daily data for specified year retrieved successfully
+ *       404:
+ *         description: No daily data found for this year
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Error fetching daily data
+ */
+router.get('/daily-data/:year', verifyTokenMiddleware, getDailyDataByYear);
+
+/**
+ * @swagger
+ * /daily-data/{year}:
+ *   put:
+ *     tags:
+ *       - Daily Data
+ *     summary: Update daily data by year for authenticated user
+ *     description: Update or create (upsert) daily data for a specific year for the logged-in user.
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: year
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The year to update
+ *         example: 2024
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               year:
+ *                 type: number
+ *               months:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *     responses:
+ *       200:
+ *         description: Daily data updated successfully
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Error updating daily data
+ */
+router.put('/daily-data/:year', verifyTokenMiddleware, updateDailyDataByYear);
+
+/**
+ * @swagger
+ * /daily-data/{year}:
+ *   delete:
+ *     tags:
+ *       - Daily Data
+ *     summary: Delete daily data by year for authenticated user
+ *     description: Delete daily data for a specific year belonging to the logged-in user.
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: year
+ *         required: true
+ *         schema:
+ *           type: integer
  *         description: The year to delete
  *         example: 2024
  *     responses:
  *       200:
- *         description: Summary data for specified year deleted successfully
+ *         description: Daily data deleted successfully
  *       404:
- *         description: Cannot delete - summary data not found for this year
+ *         description: No daily data found to delete
  *       401:
  *         description: Unauthorized
  *       500:
- *         description: Error deleting summary data
+ *         description: Error deleting daily data
  */
-router.delete('/summary-data/me/:year', verifyTokenMiddleware, deleteSummaryDataByYear);
-
-router.post('/daily-data', createDailyData);
-router.get('/daily-data', getAllDailyData);
-router.get('/daily-data/:year', getDailyDataByYear);
-router.put('/daily-data/:year', updateDailyDataByYear);
-router.delete('/daily-data/:year', deleteDailyDataByYear);
+router.delete('/daily-data/:year', verifyTokenMiddleware, deleteDailyDataByYear);
 // Quarterly Data Routes
 
 /**
